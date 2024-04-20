@@ -1,16 +1,22 @@
 from flask import Flask, render_template
+import pandas as pd
 
 app = Flask(__name__)
+
+stations = pd.read_csv('data/stations.txt', skiprows=17)
+stations = stations[['STAID', 'STANAME                                 ']]
 
 
 @app.route("/")
 def home():
-    return render_template("home.html")
+    return render_template("home.html", data=stations.to_html())
 
 
 @app.route("/api/v1/<station>/<date>")
 def about(station, date):
-    temperature = 23
+    filename = f"data/TG_STAID{str(station).zfill(6)}.txt"
+    df = pd.read_csv(filename, skiprows=20, parse_dates=['    DATE'])
+    temperature = df.loc[df['    DATE'] == date]['   TG'].squeeze() / 10
     return {
         "station": station,
         "date": date,
@@ -18,19 +24,21 @@ def about(station, date):
     }
 
 
-# @app.route("/about/")
-# def about():
-#     return render_template("about.html")
-#
-#
-# @app.route("/contact-us/")
-# def contact_us():
-#     return render_template("contact_us.html")
-#
-#
-# @app.route("/store/")
-# def store():
-#     return render_template("store.html")
+@app.route("/api/v1/<station>")
+def all_data(station):
+    filename = f"data/TG_STAID{str(station).zfill(6)}.txt"
+    df = pd.read_csv(filename, skiprows=20, parse_dates=['    DATE'])
+    result = df.to_dict(orient="records")
+    return result[0:21]
+
+
+@app.route("/api/v1/yearly/<station>/<year>")
+def year_data(station, year):
+    filename = f"data/TG_STAID{str(station).zfill(6)}.txt"
+    df = pd.read_csv(filename, skiprows=20)
+    df['    DATE'] = df['    DATE'].astype(str)
+    result = df[df['    DATE'].str.startswith(str(year))].to_dict(orient="records")
+    return result
 
 if __name__ == "__main__":
     app.run(debug=True)
